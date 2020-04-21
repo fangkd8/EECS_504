@@ -19,7 +19,7 @@ To test our code, we are now using deducted train, label and val sets.
 
 * `OpenCV`
 * `Eigen`
-* `Octomap`, version 1.9.5, built from https://github.com/OctoMap/octomap master branch.
+* `Octomap`, version 1.9.5, built from https://github.com/OctoMap/octomap devel branch.
 
 ### Usage
 
