@@ -16,8 +16,16 @@ using namespace octomap;
 
 const int ROW = 375;
 const int COL = 1242;
+
+/*
+  If you want to run KITTI odometry mapping, please edit 
+  data_dir = [directory] to .bin files.
+  calib_dir = [path to calib.txt]
+  pose_dir = [path to ground truth]
+*/
+
 const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
-const string calib_fir = "../calib.txt";
+const string calib_dir = "../calib.txt";
 const string pose_dir = "../data/06.txt";
 const string save_dir = "../data/mapping.ot";
 
@@ -41,7 +49,7 @@ int main(int argc, char const *argv[]){
   bool viewProjection = false;
 
   // KITTI intrinsic & extrinsic, using left image.
-  std::ifstream calib_file(calib_fir);
+  std::ifstream calib_file(calib_dir);
   MatrixXf K;
   K.resize(3, 4);
   K = ReadCalibrationVariable<3, 4>("P0:", calib_file);
