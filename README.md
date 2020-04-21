@@ -38,7 +38,7 @@ By default, 2 files of lidar data from KITTI odometry sequence 06 are provided, 
 
 Following image is the plot of default data visualization. In the plot, first point cloud is painted as red, second is in blue, merged point cloud is set with ground truth pose.
 
-<img src="octomap_example/defaultdata.png" />
+<img src="octomap_example/defaultdata.png" width="779" height="414" />
 
 Contact
 -------
