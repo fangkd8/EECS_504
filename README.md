@@ -36,7 +36,7 @@ Before compling codes, choose one of ways for different purposes.
 #### 1. Testing
 By default, 2 files of lidar data from KITTI odometry sequence 06 are provided, together with calibration file and ground truth pose file. For testing, you can compile codes directly and visualize the data by Octovis.
 
-If you want to check LiDAR-camera projection, please edit line 41 of [code] (https://github.com/fangkd8/EECS_504/blob/master/octomap_example/src/buildmap.cpp), set `bool viewProjection = true;`. Projection result is shown in following image.
+If you want to check LiDAR-camera projection, please edit line 41 of [code](https://github.com/fangkd8/EECS_504/blob/master/octomap_example/src/buildmap.cpp), set `bool viewProjection = true;`. Projection result is shown in following image.
 
 <p align="center">
   <img src="octomap_example/projection.png" width="621" height="190" >
@@ -97,5 +97,6 @@ Contact
 -------
 
 Dianhao Chen - dianhao.chen1997@gmail.com
+
 Kaiduo Fang  - fangkd@umich.edu
 
