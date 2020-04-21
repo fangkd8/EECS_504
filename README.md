@@ -83,6 +83,16 @@ The following image shows mapping result containing the first 100 LiDAR point cl
   <img src="octomap_example/octomap_part.png" width="779" height="414" >
 </p>
 
+#### Files in [data](https://github.com/fangkd8/EECS_504/tree/master/octomap_example/data)
+
+* 1. *.bin: KITTI LiDAR data.
+* 2. 06.txt: ground truth poses of KITTI odometry sequence 06.
+* 3. mapping.ot: test LiDAR mapping.
+* 4. mappingFull.ot: full LiDAR mapping of KITTI odometry sequence 06.
+* 5. mappingPart.ot: LiDAR mapping of first 100 point clouds in KITTI odometry sequence 06.
+
+`*.ot` files are for visualization with `Octovis`.
+
 Contact
 -------
 
