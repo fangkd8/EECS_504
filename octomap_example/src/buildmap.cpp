@@ -63,16 +63,16 @@ int main(int argc, char const *argv[]){
   vector<Matrix4f> v = ReadPoses(pose_dir);
   int size;
   if (fullMap && !defaultdata){
-  	cout << "Mapping with whole dataset." << endl;
-  	size = v.size();
+    cout << "Mapping with whole dataset." << endl;
+    size = v.size();
   }
   else if (!fullMap && !defaultdata){
-  	cout << "Mapping with " << partMap << " point clouds." << endl;
-  	size = partMap;
+    cout << "Mapping with " << partMap << " point clouds." << endl;
+    size = partMap;
   }
   else{
-  	cout << "Mapping with given data" << endl;
-  	size = 2;
+    cout << "Mapping with given data" << endl;
+    size = 2;
   }
 
   for (int k = 0; k < size; k++){
