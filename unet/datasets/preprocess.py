@@ -1,8 +1,17 @@
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
 import os
+import time
+import itertools
 
 import torch
 import torchvision
 from torchvision import datasets, models, transforms
+import torch.nn as nn
+import torch.optim as optim
+from torch.autograd import Variable
+import torch.nn.functional as F
 
 
 '''
