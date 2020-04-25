@@ -12,6 +12,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 import torch.nn.functional as F
+import cv2
+import matplotlib.image
+from PIL import Image
 
 # import self functions
 from preprocess import *
@@ -36,83 +39,93 @@ if __name__ == '__main__':
         transforms.ToTensor(),
         #transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
+    # set training batch size
+    batch_size_train = 1
 
     (len_train_label, train_label_loader) = load_data_label(
-        '/home/chendh/Desktop/label',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine; /home/chendh/Desktop/label
-        'train', transform, 1, shuffle=False
+        '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine; /home/chendh/Desktop/label
+        'train', transform, batch_size_train, shuffle=False
     )
     (len_train_raw, train_raw_loader) = load_data_raw(
-        '/home/chendh/Desktop/raw',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit; /home/chendh/Desktop/raw
-        'train', transform, 1, shuffle=False
+        '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit; /home/chendh/Desktop/raw
+        'train', transform, batch_size_train, shuffle=False
     )
     (len_test_label, test_label_loader) = load_data_label(
-        '/home/chendh/Desktop/label',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine; /home/chendh/Desktop/label
+        '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine; /home/chendh/Desktop/label
         'val', transform, 5, shuffle=False
     )
     (len_test_raw, test_raw_loader) = load_data_raw(
-        '/home/chendh/Desktop/raw',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit; /home/chendh/Desktop/raw
+        '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit',  #/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit; /home/chendh/Desktop/raw
         'val', transform, 5, shuffle=False
     )
     test_label = test_label_loader.__iter__().__next__()[0]
     test_raw = test_raw_loader.__iter__().__next__()[0]
     img_size = test_label.size()[2]
 
-    # train split
-    '''
-    train_label = train_label_loader.__iter__().__next__()[0]
-    train_raw = train_raw_loader.__iter__().__next__()[0]
-    train_fixed = torch.cat((train_label, train_raw), 3)
-    print(len_train_label)
-    print(len_train_raw)
-    '''
 
     '''
-    # test success 1
-    train_label = iter(train_label_loader)
-    train_raw = iter(train_raw_loader)
-    #train_combined = iter(train_combined_loader)
-    for i in range(1, 10):
-        data1 = train_label.next()
-        data2 = train_raw.next()
-        data3 = torch.cat((data1[0], data2[0]), 3)
-        #data3 = train_combined.next()
+    para define whether to train or test or predict
+    1->train; 2->keep training; 3->test; 4->predict
+    '''
+    flag_mode = 1
 
-        plt.imshow(data1[0][0][0])
+    if flag_mode == 1:
+        # define and report the network
+        model = Unet(3, 3)
+        #model.weight_init(mean=0.0, std=0.02)
+        model.cuda()
+        model.train()
+        # report the architectures of Unet
+        print(model)
+        print('Number of trainable parameters {}'.format(count_params(model)))
+        # train
+        (model, hist_losses) = train(
+            model, train_label_loader, train_raw_loader, test_raw, test_label, num_epochs=10
+        )
+        # plot the loss history
+        plot_loss(hist_losses)
+
+    elif flag_mode == 2:
+        # define and report the network
+        model = Unet(3, 3)
+        # select trained weights to keep training
+        start_epoch = 44
+        weights_file_path = '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Final_Project/weights/weights_epoch43.pth'
+        model.load_state_dict(torch.load(weights_file_path))
+        model.cuda()
+        model.train()
+        # report the architectures of Unet
+        print(model)
+        print('Number of trainable parameters {}'.format(count_params(model)))
+        # train
+        (model, hist_losses) = keep_train(
+            model, train_label_loader, train_raw_loader, test_raw, test_label, start_epoch, num_epochs=70
+        )
+        # plot the loss history
+        plot_loss(hist_losses)
+
+    elif flag_mode == 3:
+        img_labelID = cv2.imread('/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/gtFine_trainvaltest/gtFine/train/aachen/aachen_000000_000019_gtFine_labelIds.png')
+        print(img_labelID)
+        plt.imshow(img_labelID)
         plt.show()
-        plt.imshow(data2[0][0][0])
-        plt.show()
-        #plt.imshow(data3[0][0][0])
-        #plt.show()
-        plt.imshow(data3[0][0])
-        plt.show()
-    # test success 1
-    '''
 
-    '''
-    # test success 2
-    for (i, j) in zip(train_label_loader, train_raw_loader):
-        a, b = i
-        c, d = j
-        plt.imshow(a[0][0])
-        plt.show()
-        plt.imshow(c[0][0])
-        plt.show()
-    # test success 2
-    '''
+    elif flag_mode == 4:
+        # define and report the network
+        model = Unet(3, 3)
+        weights_file_path = '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Final_Project/weights/weights_epoch60.pth' #69 67 6262 6161 60 52 51
+        img_path = '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/Prediction/0000000294.png'#'/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/leftImg8bit_trainvaltest/leftImg8bit/train/aachen/aachen_000000_000019_leftImg8bit.png'#'/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Datasets/Prediction/0000000068.png'
 
-    # Define and report the network
-    model = Unet(3, 3)
-    #model.weight_init(mean=0.0, std=0.02)
-    model.cuda()
-    model.train()
-    # Report the architectures of Unet
-    print(model)
-    print('Number of trainable parameters {}'.format(count_params(model)))
-
-    # train
-    (model, hist_losses) = train(
-        model, train_label_loader, train_raw_loader, test_raw, test_label, num_epochs=20
-    )
-
-    # plot the loss history
-    plot_loss(hist_losses)
+        # test->0; predict kitti->1
+        flag_crop = 1
+        if flag_crop == 0:
+            predict(model, weights_file_path, img_path, flag_crop, test_raw, test_label)
+        else:
+            (img_raw, img_prediction) = predict(
+                model, weights_file_path, img_path,
+                flag_crop, test_raw, test_label
+            )
+            #plt.imshow(img_raw)
+            print(img_prediction)
+            plt.imshow(img_prediction)
+            plt.show()
