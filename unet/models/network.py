@@ -53,7 +53,7 @@ class Unet(nn.Module):
         self.conv8 = DoubleConv(256, 128)
         self.up9 = nn.ConvTranspose2d(128, 64, 2, stride=2)
         self.conv9 = DoubleConv(128, 64)
-        self.conv10 = nn.Conv2d(64, out_ch, 1)
+        self.conv10 = nn.Conv2d(64, 34, 1)
 
     def forward(self, x):
         c1=self.conv1(x)
@@ -78,7 +78,7 @@ class Unet(nn.Module):
         merge9=torch.cat([up_9, c1], dim=1)
         c9=self.conv9(merge9)
         c10=self.conv10(c9)
-        out = nn.Sigmoid()(c10)
+        out = c10  #nn.Sigmoid()(c10)
 
 
         return out

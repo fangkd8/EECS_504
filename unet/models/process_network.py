@@ -14,18 +14,9 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import cv2
 from PIL import Image
+from label_visualize import *
 
-
-# show images
-def process_image(img):
-    #img = (img.cpu().data.numpy().transpose(1, 2, 0) + 1) / 2
-    img = img.cpu().data.numpy().transpose(1, 2, 0)
-    #y_pred = model.predict(image)
-    #img = (img > 0.5).astype(np.uint8)
-    #plt.imshow(np.squeeze(y_pred), plt.cm.gray)
-
-
-    return img
+#np.set_printoptions(threshold=np.inf)
 
 
 # tensor to numpy
@@ -157,6 +148,26 @@ def count_params(model):
     return num_params
 
 
+# compute IOU
+iou_thresholds = np.array([0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95])
+
+def iou(img_true, img_pred):
+    img_pred = (img_pred > 0).float()
+    i = (img_true * img_pred).sum()
+    u = (img_true + img_pred).sum()
+    return i / u if u != 0 else u
+
+def iou_metric(imgs_pred, imgs_true):
+    num_images = len(imgs_true)
+    scores = np.zeros(num_images)
+    for i in range(num_images):
+        if imgs_true[i].sum() == imgs_pred[i].sum() == 0:
+            scores[i] = 1
+        else:
+            scores[i] = (iou_thresholds <= iou(imgs_true[i], imgs_pred[i])).mean()
+    return scores.mean()
+
+
 # Dice loss
 # Dice loss helper function
 def dice_coef_np(y_true, y_pred):
@@ -182,12 +193,10 @@ def crop_tensor_train(x, y):
         # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
 
+    batch_size = y.shape[0]
     x_temp, y_temp = x[:, :, :420, :], y[:, :, :420, :]
     x0, y0 = cropped_transform(x_temp[0]), cropped_transform(y_temp[0])
-    #x1, y1 = cropped_transform(x_temp[1]), cropped_transform(y_temp[1])
-    #x_ = torch.cat((x0.unsqueeze(0), x1.unsqueeze(0)), 0)
-    #y_ = torch.cat((y0.unsqueeze(0), y1.unsqueeze(0)), 0)
-    x0, y0 = x0.unsqueeze(0), y0.unsqueeze(0)
+    x0 = x0.unsqueeze(0)
 
     x_, y_ = x0.cuda(), y0.cuda()
 
@@ -195,28 +204,60 @@ def crop_tensor_train(x, y):
     return (x_, y_)
 
 
-# transform testing datasets' H reduced img(0-420) to (512, 1024)
-def crop_tensor_test(x, y):
-    cropped_transform = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize((512, 1024)),
-        transforms.ToTensor(),
-        # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-    ])
-
-    x_temp, y_temp = x[:, :, :420, :], y[:, :, :420, :]
-    x0, y0 = cropped_transform(x_temp[0]), cropped_transform(y_temp[0])
-    x1, y1 = cropped_transform(x_temp[1]), cropped_transform(y_temp[1])
-    x2, y2 = cropped_transform(x_temp[2]), cropped_transform(y_temp[2])
-    x3, y3 = cropped_transform(x_temp[3]), cropped_transform(y_temp[3])
-    x4, y4 = cropped_transform(x_temp[4]), cropped_transform(y_temp[4])
-    x_ = torch.cat((x0.unsqueeze(0), x1.unsqueeze(0), x2.unsqueeze(0), x3.unsqueeze(0), x4.unsqueeze(0)), 0)
-    y_ = torch.cat((y0.unsqueeze(0), y1.unsqueeze(0), y2.unsqueeze(0), y3.unsqueeze(0), y4.unsqueeze(0)), 0)
-
-    x_, y_ = x_.cuda(), y_.cuda()
+'''
+transfer the labelID image to proper format
+'''
+def pyr_down(p, kernel_size=3, sigma=0.8):
+    '''
+    Downsample the pyramid image to get the upper level.
+    Input:
+      p: M x N x C array
+    Return:
+      out: M/2 x N/2 x C
+    '''
+    p_ = p.copy()
+    # out = gaussian_blur(p_, kernel_size, sigma)
 
 
-    return (x_, y_)
+    return cv2.resize(p_, (int(p.shape[1] / 2), int(p.shape[0] / 2)), interpolation=cv2.INTER_NEAREST)
+
+
+#input：labels  channel：1024*2048
+#input：one_hot  channel：N*34*512*1024
+def get_one_hot(label, N):
+    size = list(label.size())
+    label = label.view(-1)   #reshape to vector
+    ones = torch.sparse.torch.eye(N)
+    ones = ones.index_select(0, label)  #transform to one hot
+    size.append(N)  #add label to the last col and reshape to origin size
+    return ones.view(*size)
+
+
+def ToOneShot(labels):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    #print(device)
+    labels = labels.cpu().numpy()
+    labels = labels[0][0]
+    #print(labels.shape)
+    #print(np.max(labels))
+    a = pyr_down(labels)  #sample to 512*1024
+    label_true = (a*255).astype(int)  #convert to intergal within 0-33
+    class_num_real = int(np.max(label_true))+1  #real label numbers
+    #print('real:%d' % class_num_real)
+    class_num = 34  #int(np.max(label_true))+1  #total categories
+    H = label_true.shape[0]
+    W = label_true.shape[1]
+    L = torch.LongTensor(label_true).unsqueeze(0)  #convert to 1*512*1024 (the first size is batch_size)
+
+    gt_one_hot = get_one_hot(L, class_num)  #the result is 1*512*1024*34
+    #print(gt_one_hot)
+    #print(gt_one_hot.shape)
+
+    one_hot = gt_one_hot.permute(0,3,1,2)  #arrange label to the corresponding channel
+    #print(one_hot.shape)
+
+
+    return one_hot
 
 
 # train process
@@ -231,13 +272,26 @@ def train_model(model, criterion, optimizer, train_label_loader, train_raw_loade
         epoch_start_time = time.time()
         num_iter = 0
         for (train_label, train_raw) in zip(train_label_loader, train_raw_loader):
-            y, temp1 = train_label
+            y, temp1 = train_label  #torch.Size([1, 3, 512, 1024])
             x, temp2 = train_raw  #torch.Size([1, 3, 512, 1024])
-            x_, y_ = crop_tensor_train(x, y)
+            #y = ToOneShot(y)  # transform the labels to one shot  #torch.Size([1, 34, 512, 1024])
+            #print(y.shape)
+            #print(torch.sum(torch.sum(y, axis=2), axis=2))
+
+            x_, y_crop = crop_tensor_train(x, y)  #y_->(3, 512, 1024)
+            #print(y_.shape)
+            y_temp = y_crop[0].unsqueeze(0)
+            #print(y_temp.shape)
+            y_ = (y_temp * 255).long()
+            #print(x_.shape)
+            #print(y_.shape)
+            #print(torch.max(y_))
 
             # Compute loss
             # forward
             outputs = model(x_)
+            #print(preds)
+            #print(preds.shape)
             loss = criterion(outputs, y_)
             # Bp and optimize
             optimizer.zero_grad()
@@ -255,9 +309,13 @@ def train_model(model, criterion, optimizer, train_label_loader, train_raw_loade
         print('Loss: %.3f' % (torch.mean(torch.FloatTensor(losses_list))))
 
         # save test compare images
+        '''
         if (epoch == 0) or (epoch % 5 == 0) or (epoch == (num_epochs - 1)):
             with torch.no_grad():
                 save_result(model, test_raw.cuda(), test_label, (epoch + 1))
+        '''
+        with torch.no_grad():
+            save_visualized_result(model, test_raw, test_label, (epoch + 1))
 
         # save train result
         torch.save(model.state_dict(), '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Final_Project/weights/weights_epoch%d.pth' % (epoch+1))
@@ -272,7 +330,7 @@ def train_model(model, criterion, optimizer, train_label_loader, train_raw_loade
 # train the network
 def train(model, train_label_loader, train_raw_loader, test_raw, test_label, num_epochs=20):
     # define LOSS functions
-    criterion = nn.BCELoss().cuda()
+    criterion = nn.CrossEntropyLoss()  #nn.BCELoss().cuda()
     # Adam optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.5, 0.999))  #lr = 1e-5  fair:0.0002 & (0.5, 0.999)
     print('Training start!')
@@ -298,13 +356,26 @@ def keep_train_model(model, criterion, optimizer, train_label_loader, train_raw_
         epoch_start_time = time.time()
         num_iter = 0
         for (train_label, train_raw) in zip(train_label_loader, train_raw_loader):
-            y, temp1 = train_label
+            y, temp1 = train_label  #torch.Size([1, 3, 512, 1024])
             x, temp2 = train_raw  #torch.Size([1, 3, 512, 1024])
-            x_, y_ = crop_tensor_train(x, y)
+            #y = ToOneShot(y)  # transform the labels to one shot  #torch.Size([1, 34, 512, 1024])
+            #print(y.shape)
+            #print(torch.sum(torch.sum(y, axis=2), axis=2))
+
+            x_, y_crop = crop_tensor_train(x, y)  #y_->(3, 512, 1024)
+            #print(y_.shape)
+            y_temp = y_crop[0].unsqueeze(0)
+            #print(y_temp.shape)
+            y_ = (y_temp * 255).long()
+            #print(x_.shape)
+            #print(y_.shape)
+            #print(torch.max(y_))
 
             # Compute loss
             # forward
             outputs = model(x_)
+            #print(preds)
+            #print(preds.shape)
             loss = criterion(outputs, y_)
             # Bp and optimize
             optimizer.zero_grad()
@@ -322,9 +393,13 @@ def keep_train_model(model, criterion, optimizer, train_label_loader, train_raw_
         print('Loss: %.3f' % (torch.mean(torch.FloatTensor(losses_list))))
 
         # save test compare images
+        '''
         if (epoch == 0) or (epoch % 5 == 0) or (epoch == (num_epochs - 1)):
             with torch.no_grad():
                 save_result(model, test_raw.cuda(), test_label, (epoch + 1))
+        '''
+        with torch.no_grad():
+            save_visualized_result(model, test_raw, test_label, (epoch + 1))
 
         # save train result
         torch.save(model.state_dict(), '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Final_Project/weights/weights_epoch%d.pth' % (epoch+1))
@@ -336,12 +411,12 @@ def keep_train_model(model, criterion, optimizer, train_label_loader, train_raw_
     return (model, hist_losses)
 
 
-# keep training the network
+# train the network
 def keep_train(model, train_label_loader, train_raw_loader, test_raw, test_label, start_epoch, num_epochs=20):
     # define LOSS functions
-    criterion = nn.BCELoss().cuda()
+    criterion = nn.CrossEntropyLoss()  #nn.BCELoss().cuda()
     # Adam optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.5, 0.999))  #lr = 1e-5  fair:0.0002 & (0.5, 0.999)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, betas=(0.5, 0.999))  #lr = 1e-4  fair:0.0002 & (0.5, 0.999)
     print('Keep training from epoch %d!' % (start_epoch))
     (model, hist_losses) = keep_train_model(
         model, criterion, optimizer,
@@ -366,35 +441,3 @@ def test(model, test_label_loader, test_raw_loader):
             x_, y_ = x_.cuda(), y_.cuda()
 
             show_result(model, x_, y_)
-
-
-# predict the input with trained unet - single image input
-def predict(model, weights_file_path, img_path, crop, test_raw, test_label):
-    if crop == 0:
-        # model.eval()
-        model.load_state_dict(torch.load(weights_file_path))
-        model = model.cuda()
-        test_raw, test_label = crop_tensor_test(test_raw, test_label)
-
-        with torch.no_grad():
-            show_result(model, test_raw, test_label, 21)
-    else:
-        # transform the input image
-        transform = transforms.Compose([
-            transforms.Resize((512, 1024)),
-            transforms.ToTensor(),
-            # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-        ])
-
-        #model.eval()
-        model.load_state_dict(torch.load(weights_file_path))
-        model = model.cuda()
-        with torch.no_grad():
-            img_raw = Image.open(img_path)
-            img = transform(img_raw).unsqueeze(0)
-            img = img.cuda()
-            outputs = model(img)
-            outputs = process_image(outputs[0]*255)
-
-
-        return (img_raw, outputs.astype(np.uint8))

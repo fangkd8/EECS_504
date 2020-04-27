@@ -26,7 +26,7 @@ def load_data_labelID(path_label, subfolder, transform, batch_size, shuffle=Fals
             del dataset.imgs[n]
             n = n - 1
         else:
-            if m % 3 != 0:
+            if m % 3 != 2:
                 del dataset.imgs[n]
                 n = n - 1
             m = m + 1
