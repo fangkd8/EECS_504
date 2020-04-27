@@ -29,7 +29,7 @@ const int COL = 1242;
 const string calib_dir = "../calib.txt";
 const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
 const string pose_dir = "../data/06.txt";
-const string save_dir = "../data/semantics_mapping_100.ot";
+const string save_dir = "../data/semantic_mapping_full_test.ot";
 const string image_dir = "/home/fangkd/Desktop/EECS 504/Kitti_prediction/label_RGB/";
 
 // bool values for different purposes.
@@ -37,7 +37,7 @@ const bool fullMap = false;
 const int partMap = 200;
 
 // You may want to use provided data.
-const bool defaultdata = false;
+const bool defaultdata = true;
 
 MatrixXf readbinfile(const string dir);
 
@@ -90,12 +90,13 @@ int main(int argc, char const *argv[]){
     snprintf(buff1, sizeof(buff1), "%006d.bin", k);
     string file = data_dir + string(buff1);
 
-    char buff2[100];
-    snprintf(buff2, sizeof(buff2), "%006d.png", k);
-    string pred = image_dir + string(buff2);
-
-    prediction = cv::imread(pred, cv::IMREAD_COLOR);
-
+    if (!defaultdata){
+      char buff2[100];
+      snprintf(buff2, sizeof(buff2), "%006d.png", k);
+      string pred = image_dir + string(buff2);
+      prediction = cv::imread(pred, cv::IMREAD_COLOR);
+    }
+    
     Matrix4f pose = v[k];
     MatrixXf data = readbinfile(file);
     MatrixXf camPts = K * T * data;
@@ -116,11 +117,13 @@ int main(int argc, char const *argv[]){
 
           octomap::point3d endpoint(pt[0], pt[1], pt[2]);
           octomap::ColorOcTreeNode* n = tree.updateNode(endpoint, true);
-          cv::Vec3b intensity = prediction.at<cv::Vec3b>(y,x);
-
-          n->setColor(intensity.val[2], intensity.val[1], intensity.val[0]);
+          
           if (defaultdata){
           	n->setColor(255*(k==0), 0, 255*(k==1));
+          }
+          else{
+            cv::Vec3b intensity = prediction.at<cv::Vec3b>(y,x);
+            n->setColor(intensity.val[2], intensity.val[1], intensity.val[0]);
           }
         }
   
