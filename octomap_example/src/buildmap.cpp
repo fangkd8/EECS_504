@@ -3,6 +3,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include "opencv2/opencv.hpp"
 
 #include <octomap/octomap.h>    // for octomap 
 #include <octomap/ColorOcTree.h>
@@ -25,14 +26,15 @@ const int COL = 1242;
   image_dir = [path to prediction images]
 */
 
-const string data_dir = "/media/fangkd/Naive1/data/00/velodyne/";
 const string calib_dir = "../calib.txt";
-const string pose_dir = "../data/00.txt";
-const string save_dir = "../data/semantic_mapping.ot";
-const string image_dir = "../data/Kitti_prediction/label_RGB/";
+const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
+const string pose_dir = "../data/06.txt";
+const string save_dir = "../data/semantics_mapping_100.ot";
+const string image_dir = "/home/fangkd/Desktop/EECS 504/Kitti_prediction/label_RGB/";
+const string raw_dir = "../data/Kitti_prediction/raw/";
 
 const bool fullMap = false;
-const int partMap = 100;
+const int partMap = 200;
 
 // You may want to use provided data.
 const bool defaultdata = false;
@@ -80,9 +82,14 @@ int main(int argc, char const *argv[]){
   for (int k = 0; k < size; k++){
     cout << "Processing " << k+1 << "-th frame." << endl;
 
-    if (viewProjection)
+    if (viewProjection){
       map = cv::Mat::zeros(ROW, COL, CV_32FC1);
-
+      char buff0[100];
+      snprintf(buff0, sizeof(buff0), "%006d.png", k);
+      string rawfile = raw_dir + string(buff0);
+      raw = cv::imread(rawfile, cv::IMREAD_COLOR);
+      cv::cvtColor(raw, raw, cv::COLOR_BGR2HSV);
+    }
     char buff1[100];
     snprintf(buff1, sizeof(buff1), "%006d.bin", k);
     string file = data_dir + string(buff1);
@@ -105,8 +112,11 @@ int main(int argc, char const *argv[]){
         float x = camPts(0, i) / camPts(2, i);
         float y = camPts(1, i) / camPts(2, i);
         if ( (x > 0 && x < COL - 0.5) && (y > 0 && y < ROW - 0.5) ){
-          if (viewProjection)
-            map.at<float>(round(y), round(x)) = 255;
+          if (viewProjection){
+            cv::circle(raw, cv::Point(round(x),
+                       round(y)), 1, 
+                       cv::Scalar(camPts(2, i), 255, 255), -1);
+          }
 
           octomap::point3d endpoint(pt[0], pt[1], pt[2]);
           octomap::ColorOcTreeNode* n = tree.updateNode(endpoint, true);
@@ -121,13 +131,8 @@ int main(int argc, char const *argv[]){
       }
     }
     if (viewProjection){
-      double minVal, maxVal;
-      cv::Point minLoc, maxLoc;
-      cv::minMaxLoc(map, &minVal, &maxVal, &minLoc, &maxLoc);
-      // cout << minVal << " " << maxVal << endl;
-      map = 255 * (map - minVal) / (maxVal - minVal);
-      map.convertTo(map, CV_8UC1);
-      cv::imshow("result", map);
+      cv::cvtColor(raw, raw, cv::COLOR_HSV2BGR);
+      cv::imshow("result", raw);
       cv::waitKey(0);    
     }
   }
