@@ -31,8 +31,8 @@ const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
 const string pose_dir = "../data/06.txt";
 const string save_dir = "../data/semantics_mapping_100.ot";
 const string image_dir = "/home/fangkd/Desktop/EECS 504/Kitti_prediction/label_RGB/";
-const string raw_dir = "../data/Kitti_prediction/raw/";
 
+// bool values for different purposes.
 const bool fullMap = false;
 const int partMap = 200;
 
@@ -50,7 +50,7 @@ vector<Matrix4f> ReadPoses(const string filename);
 
 int main(int argc, char const *argv[]){
 
-  bool viewProjection = false;
+  bool viewProjection = true;
 
   // KITTI intrinsic & extrinsic, using left image.
   std::ifstream calib_file(calib_dir);
@@ -62,7 +62,7 @@ int main(int argc, char const *argv[]){
 
   octomap::ColorOcTree tree(0.1);
 
-  cv::Mat map, raw, prediction;
+  cv::Mat map, prediction;
   
   vector<Matrix4f> v = ReadPoses(pose_dir);
   int size;
@@ -83,12 +83,8 @@ int main(int argc, char const *argv[]){
     cout << "Processing " << k+1 << "-th frame." << endl;
 
     if (viewProjection){
-      map = cv::Mat::zeros(ROW, COL, CV_32FC1);
-      char buff0[100];
-      snprintf(buff0, sizeof(buff0), "%006d.png", k);
-      string rawfile = raw_dir + string(buff0);
-      raw = cv::imread(rawfile, cv::IMREAD_COLOR);
-      cv::cvtColor(raw, raw, cv::COLOR_BGR2HSV);
+      map = cv::Mat::zeros(ROW, COL, CV_8UC3);
+      cv::cvtColor(map, map, cv::COLOR_BGR2HSV);
     }
     char buff1[100];
     snprintf(buff1, sizeof(buff1), "%006d.bin", k);
@@ -113,7 +109,7 @@ int main(int argc, char const *argv[]){
         float y = camPts(1, i) / camPts(2, i);
         if ( (x > 0 && x < COL - 0.5) && (y > 0 && y < ROW - 0.5) ){
           if (viewProjection){
-            cv::circle(raw, cv::Point(round(x),
+            cv::circle(map, cv::Point(round(x),
                        round(y)), 1, 
                        cv::Scalar(camPts(2, i), 255, 255), -1);
           }
@@ -131,8 +127,8 @@ int main(int argc, char const *argv[]){
       }
     }
     if (viewProjection){
-      cv::cvtColor(raw, raw, cv::COLOR_HSV2BGR);
-      cv::imshow("result", raw);
+      cv::cvtColor(map, map, cv::COLOR_HSV2BGR);
+      cv::imshow("projection", map);
       cv::waitKey(0);    
     }
   }
