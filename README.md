@@ -17,7 +17,7 @@ To test our code, we are now using deducted train, label and val sets.
 
 Following plot is semantic results of KITTI odometry sequence 00.
 <p align="center">
-  <img src="octomap_example/semantic_result.png" width="621" height="190" >
+  <img src="octomap_example/semantic_result.png" width="621" height="500" >
 </p>
 
 ### Dependencies
@@ -69,7 +69,7 @@ Also at line 30-33 of [code](https://github.com/fangkd8/EECS_504/blob/master/oct
 The following image shows the plot of mapping with semantic label for KITTI sequence 06. 
 
 <p align="center">
-  <img src="octomap_example/semantic_result.png" width="779" height="414" >
+  <img src="octomap_example/semantic_result.png" width="779" height="450" >
 </p>
 
 #### 3. Part Dataset Mapping
@@ -85,7 +85,7 @@ const bool defaultdata = false;
 The following image shows mapping result containing the first 100 LiDAR point clouds in KITTI sequence 00.
 
 <p align="center">
-  <img src="octomap_example/semantic_part.png" width="779" height="414" >
+  <img src="octomap_example/semantic_part.png" width="670" height="550" >
 </p>
 
 #### Files in [data](https://github.com/fangkd8/EECS_504/tree/master/octomap_example/data)
