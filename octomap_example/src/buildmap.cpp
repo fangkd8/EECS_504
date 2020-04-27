@@ -22,18 +22,20 @@ const int COL = 1242;
   data_dir = [directory] to .bin files.
   calib_dir = [path to calib.txt]
   pose_dir = [path to ground truth]
+  image_dir = [path to prediction images]
 */
 
-const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
+const string data_dir = "/media/fangkd/Naive1/data/00/velodyne/";
 const string calib_dir = "../calib.txt";
-const string pose_dir = "../data/06.txt";
-const string save_dir = "../data/mapping.ot";
+const string pose_dir = "../data/00.txt";
+const string save_dir = "../data/semantic_mapping.ot";
+const string image_dir = "../data/Kitti_prediction/label_RGB/";
 
 const bool fullMap = false;
 const int partMap = 100;
 
 // You may want to use provided data.
-const bool defaultdata = true;
+const bool defaultdata = false;
 
 MatrixXf readbinfile(const string dir);
 
@@ -58,7 +60,7 @@ int main(int argc, char const *argv[]){
 
   octomap::ColorOcTree tree(0.1);
 
-  cv::Mat map, mD;
+  cv::Mat map, raw, prediction;
   
   vector<Matrix4f> v = ReadPoses(pose_dir);
   int size;
@@ -79,11 +81,17 @@ int main(int argc, char const *argv[]){
     cout << "Processing " << k+1 << "-th frame." << endl;
 
     if (viewProjection)
-      map = cv::Mat::zeros(ROW, COL, CV_32FC1);      
+      map = cv::Mat::zeros(ROW, COL, CV_32FC1);
 
     char buff1[100];
     snprintf(buff1, sizeof(buff1), "%006d.bin", k);
     string file = data_dir + string(buff1);
+
+    char buff2[100];
+    snprintf(buff2, sizeof(buff2), "%006d.png", k);
+    string pred = image_dir + string(buff2);
+
+    prediction = cv::imread(pred, cv::IMREAD_COLOR);
 
     Matrix4f pose = v[k];
     MatrixXf data = readbinfile(file);
@@ -102,9 +110,9 @@ int main(int argc, char const *argv[]){
 
           octomap::point3d endpoint(pt[0], pt[1], pt[2]);
           octomap::ColorOcTreeNode* n = tree.updateNode(endpoint, true);
-          
-          // Till now, only set them to the same color.
-          n->setColor(0, 0, 255);
+          cv::Vec3b intensity = prediction.at<cv::Vec3b>(y,x);
+
+          n->setColor(intensity.val[2], intensity.val[1], intensity.val[0]);
           if (defaultdata){
           	n->setColor(255*(k==0), 0, 255*(k==1));
           }
