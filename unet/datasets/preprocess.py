@@ -1,41 +1,41 @@
+import pickle
+import numpy as np
+import matplotlib.pyplot as plt
 import os
+import time
+import itertools
 
 import torch
 import torchvision
 from torchvision import datasets, models, transforms
+import torch.nn as nn
+import torch.optim as optim
+from torch.autograd import Variable
+import torch.nn.functional as F
 
 
-'''
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, filepath=None, dataLen=None):
-        self.file = filepath
-        self.dataLen = dataLen
-
-    def __getitem__(self, index):
-        A, B, path, hop = linecache.getline(self.file, index + 1).split('\t')
-        return A, B, path.split(' '), int(hop)
-
-    def __len__(self):
-        return self.dataLen
-'''
-
-
-# temp
-def load_data(path, subfolder, transform, batch_size, shuffle=True):
-    data_path = os.path.join(path, subfolder)
-    subfolder_dataset = torchvision.datasets.ImageFolder(
-        root=data_path,
-        transform=transform
-    )
-    Dataloader = torch.utils.data.DataLoader(
-        subfolder_dataset,
-        batch_size=batch_size,
-        num_workers=2,
-        shuffle=shuffle
-    )
+# extract the label training images
+def load_data_labelID(path_label, subfolder, transform, batch_size, shuffle=False):
+    # create the label dataset
+    dataset = datasets.ImageFolder(path_label, transform)
+    index = dataset.class_to_idx[subfolder]
+    n = 0
+    m = 0
+    for i in range(dataset.__len__()):
+        if index != dataset.imgs[n][1]:
+            del dataset.imgs[n]
+            n = n - 1
+        else:
+            if m % 3 != 2:
+                del dataset.imgs[n]
+                n = n - 1
+            m = m + 1
+        n = n + 1
+    len_dataset = dataset.__len__()
+    Dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True)
 
 
-    return Dataloader
+    return (len_dataset, Dataloader)
 
 
 # extract the label training images
@@ -56,7 +56,7 @@ def load_data_label(path_label, subfolder, transform, batch_size, shuffle=False)
             m = m + 1
         n = n + 1
     len_dataset = dataset.__len__()
-    Dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    Dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True)
 
 
     return (len_dataset, Dataloader)
@@ -73,7 +73,7 @@ def load_data_raw(path, subfolder, transform, batch_size, shuffle=False):
             n = n - 1
         n = n + 1
     len_dataset = dataset.__len__()
-    Dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    Dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True)
 
 
     return (len_dataset, Dataloader)
@@ -122,7 +122,7 @@ def load_data_train_combined(path_label, path_raw, subfolder, transform, batch_s
             #print(dataset_combined[i][0].size())
 
 
-    Dataloader = torch.utils.data.DataLoader(dataset_combined, batch_size=batch_size, shuffle=shuffle)
+    Dataloader = torch.utils.data.DataLoader(dataset_combined, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True)
 
 
     return (len_dataset_label, len_dataset_raw, Dataloader)
