@@ -17,7 +17,7 @@ To test our code, we are now using deducted train, label and val sets.
 
 Following plot is semantic results of KITTI odometry sequence 00.
 <p align="center">
-  <img src="octomap_example/semantic_result.png" width="621" height="380" >
+  <img src="octomap_example/semantic_result.png" width="779" height="450" >
 </p>
 
 ### Dependencies
