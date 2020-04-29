@@ -8,7 +8,7 @@ For test, we are using 'gtFine_trainvaltest.zip (241MB) [md5]' as labels, and us
 
 When validating our training outcome, we are using the images of 'val' subfolder of the corresponding datasets.
 
-To test our code, we are now using deducted train, label and val sets.
+To test our code, we now implement image segmentaion on KITTI datasets.
 
 ## LiDAR Mapping
 
