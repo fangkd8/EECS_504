@@ -104,8 +104,10 @@ The following image shows mapping result containing the first 100 LiDAR point cl
 Contact
 -------
 
-Dianhao Chen - dianhao.chen1997@gmail.com
+Dianhao Chen  -  chendh@umich.edu
 
-Kaiduo Fang  - fangkd@umich.edu
+Kaiduo Fang  -  fangkd@umich.edu
 
-Hang Zhang  - zhhang@umich.edu
+Hang Zhang  -  zhhang@umich.edu
+
+Shoutian Wang  -  shoutian@umich.edu
