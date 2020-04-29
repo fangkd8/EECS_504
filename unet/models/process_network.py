@@ -157,6 +157,7 @@ def iou(img_true, img_pred):
     u = (img_true + img_pred).sum()
     return i / u if u != 0 else u
 
+
 def iou_metric(imgs_pred, imgs_true):
     num_images = len(imgs_true)
     scores = np.zeros(num_images)
@@ -416,7 +417,7 @@ def keep_train(model, train_label_loader, train_raw_loader, test_raw, test_label
     # define LOSS functions
     criterion = nn.CrossEntropyLoss()  #nn.BCELoss().cuda()
     # Adam optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, betas=(0.5, 0.999))  #lr = 1e-4  fair:0.0002 & (0.5, 0.999)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, betas=(0.5, 0.999))  #lr = 1e-4; 1e-5  fair:0.0002 & (0.5, 0.999)
     print('Keep training from epoch %d!' % (start_epoch))
     (model, hist_losses) = keep_train_model(
         model, criterion, optimizer,

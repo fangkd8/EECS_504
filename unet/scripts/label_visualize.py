@@ -26,6 +26,21 @@ import network
 import process_network
 
 
+# resize image for compute accuracy (512, 1024, 3)->(1024, 2048, 3)
+def pyr_up_IOU(p):
+    '''
+    Upsample the image to get the upper level.
+    Input:
+      p: M x N x C array
+    Return:
+      out: 375 x 1242 x C
+    '''
+    p_ = p.copy()
+
+
+    return cv2.resize(p_, (2048, 1024), interpolation=cv2.INTER_NEAREST)
+
+
 # resize kitti image (512, 1024, 3)->(375, 1242, 3)
 def pyr_up(p):
     '''
@@ -38,7 +53,7 @@ def pyr_up(p):
     p_ = p.copy()
 
 
-    return cv2.resize(p_, (1242, 375), interpolation=cv2.INTER_NEAREST)
+    return cv2.resize(p_, (1241, 376), interpolation=cv2.INTER_NEAREST)  #(1242, 375)
 
 
 # transform kitti single image's H reduced img(0-420) to (512, 1024)
@@ -207,6 +222,47 @@ def save_visualized_result(model, x, y, num_epoch):
     plt.close()
 
 
+# save the testing results
+def save_visualized_result_test(model, x, y, num_epoch):
+    (x_, y_) = crop_tensor_test(x, y)
+    predict_label = model(x_)
+    (temp_max, preds) = torch.max(predict_label.data, 1)  #preds->(5, 512, 1024)
+    #print(preds.shape)
+
+    fig, ax = plt.subplots(x_.size()[0], 3, figsize=(12, 10)) # figsize ratio (w,h) (18, 15)--->(5)
+
+    for i in range(x_.size()[0]):
+        ax[i, 0].get_xaxis().set_visible(False)
+        ax[i, 0].get_yaxis().set_visible(False)
+        ax[i, 1].get_xaxis().set_visible(False)
+        ax[i, 1].get_yaxis().set_visible(False)
+        ax[i, 2].get_xaxis().set_visible(False)
+        ax[i, 2].get_yaxis().set_visible(False)
+        ax[i, 0].cla()
+        ax[i, 0].imshow(process_image(x_[i]))
+        ax[i, 1].cla()
+        ax[i, 1].imshow(visualize_prediction(preds[i]))
+        ax[i, 2].cla()
+        ax[i, 2].imshow(process_image(y_[i]))
+
+    plt.tight_layout()
+    label_epoch = 'Epoch {0}'.format(num_epoch)
+    fig.text(0.5, 0, label_epoch, ha='center')
+    label_input = 'Input'
+    fig.text(0.18, 1, label_input, ha='center')
+    label_output = 'Output'
+    fig.text(0.5, 1, label_output, ha='center')
+    label_truth = 'Truth'
+    fig.text(0.81, 1, label_truth, ha='center')
+
+    plt.savefig(
+        '/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Testing_results/Epoch %d.png' %
+        (num_epoch), bbox_inches='tight'
+    )#, bbox_inches='tight')
+
+    plt.close()
+
+
 # visualize the results of categories  (512, 1024)->(512, 1024, 3)
 def visualize_prediction(output_model):
     predict_img = output_model.cpu().data.numpy()
@@ -307,16 +363,14 @@ def predict(model, weights_file_path, dir_path, crop, test_raw, test_label, num_
         with torch.no_grad():
             files = os.listdir(dir_path)
             files.sort()  #sort
+            len_file = len(files)
             if num_restrict != 0:
                 for filename in files:
                     if img_count < num_restrict+1:
-                        #print(filename)
+                        print('Processing %d/%d image.' % (img_count, len_file))
                         img_raw = Image.open(dir_path + "/" + filename)  #(1242, 375)
-                        #print(img_raw.size)
                         img = transform(img_raw).unsqueeze(0)
                         (output_label, visualized_label) = show_visualized_result_single(model, img.cuda(), 68)
-                        #outputs = model(img)
-                        #output_label = process_image(outputs[0])
                         output_label = Image.fromarray(output_label.astype('uint8')).convert('RGB')
                         visualized_label = Image.fromarray(visualized_label.astype('uint8')).convert('RGB')
                         output_label.save('/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Kitti_prediction/label' + '/' + filename)
@@ -326,14 +380,12 @@ def predict(model, weights_file_path, dir_path, crop, test_raw, test_label, num_
                         break
             else:
                 for filename in files:
-                    #print(filename)
+                    print('Processing %d/%d image.' % (img_count, len_file))
                     img_raw = Image.open(dir_path + "/" + filename)  #(1242, 375)
-                    #print(img_raw.size)
                     img = transform(img_raw).unsqueeze(0)
                     (output_label, visualized_label) = show_visualized_result_single(model, img.cuda(), 68)
-                    #outputs = model(img)
-                    #output_label = process_image(outputs[0])
-                    output_label = Image.fromarray(output_label.astype('uint8')).convert('RGB')
+                    #output_label = Image.fromarray(output_label.astype('uint8')).convert('RGB')
                     visualized_label = Image.fromarray(visualized_label.astype('uint8')).convert('RGB')
-                    output_label.save('/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Kitti_prediction/label' + '/' + filename)
+                    #output_label.save('/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Kitti_prediction/label' + '/' + filename)
                     visualized_label.save('/home/chendh/Pytorch_Projects/jupyter_notebook_files/EECS504_Files/Project/Kitti_prediction/label_RGB' + '/' + filename)
+                    img_count += 1
