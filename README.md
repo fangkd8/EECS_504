@@ -2,6 +2,8 @@
 # Semantic Mapping with LiDAR Point Clouds and RGB Images
 ------------------
 
+## U-net - Semantic Segmentation
+
 The link for temporary datasets is: https://www.cityscapes-dataset.com/downloads/
 
 For test, we are using 'gtFine_trainvaltest.zip (241MB) [md5]' as labels, and using 'leftImg8bit_trainvaltest.zip (11GB) [md5]' as raw input images for training.
