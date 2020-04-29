@@ -108,3 +108,4 @@ Dianhao Chen - dianhao.chen1997@gmail.com
 
 Kaiduo Fang  - fangkd@umich.edu
 
+Hang Zhang  - zhhang@umich.edu
