@@ -3,6 +3,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include "opencv2/opencv.hpp"
 
 #include <octomap/octomap.h>    // for octomap 
 #include <octomap/ColorOcTree.h>
@@ -22,15 +23,18 @@ const int COL = 1242;
   data_dir = [directory] to .bin files.
   calib_dir = [path to calib.txt]
   pose_dir = [path to ground truth]
+  image_dir = [path to prediction images]
 */
 
-const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
 const string calib_dir = "../calib.txt";
+const string data_dir = "/home/fangkd/Desktop/dataset/06/velodyne/";
 const string pose_dir = "../data/06.txt";
-const string save_dir = "../data/mapping.ot";
+const string save_dir = "../data/semantic_mapping_full_test.ot";
+const string image_dir = "/home/fangkd/Desktop/EECS 504/Kitti_prediction/label_RGB/";
 
+// bool values for different purposes.
 const bool fullMap = false;
-const int partMap = 100;
+const int partMap = 200;
 
 // You may want to use provided data.
 const bool defaultdata = true;
@@ -46,7 +50,7 @@ vector<Matrix4f> ReadPoses(const string filename);
 
 int main(int argc, char const *argv[]){
 
-  bool viewProjection = false;
+  bool viewProjection = true;
 
   // KITTI intrinsic & extrinsic, using left image.
   std::ifstream calib_file(calib_dir);
@@ -58,7 +62,7 @@ int main(int argc, char const *argv[]){
 
   octomap::ColorOcTree tree(0.1);
 
-  cv::Mat map, mD;
+  cv::Mat map, prediction;
   
   vector<Matrix4f> v = ReadPoses(pose_dir);
   int size;
@@ -78,13 +82,21 @@ int main(int argc, char const *argv[]){
   for (int k = 0; k < size; k++){
     cout << "Processing " << k+1 << "-th frame." << endl;
 
-    if (viewProjection)
-      map = cv::Mat::zeros(ROW, COL, CV_32FC1);      
-
+    if (viewProjection){
+      map = cv::Mat::zeros(ROW, COL, CV_8UC3);
+      cv::cvtColor(map, map, cv::COLOR_BGR2HSV);
+    }
     char buff1[100];
     snprintf(buff1, sizeof(buff1), "%006d.bin", k);
     string file = data_dir + string(buff1);
 
+    if (!defaultdata){
+      char buff2[100];
+      snprintf(buff2, sizeof(buff2), "%006d.png", k);
+      string pred = image_dir + string(buff2);
+      prediction = cv::imread(pred, cv::IMREAD_COLOR);
+    }
+    
     Matrix4f pose = v[k];
     MatrixXf data = readbinfile(file);
     MatrixXf camPts = K * T * data;
@@ -97,29 +109,29 @@ int main(int argc, char const *argv[]){
         float x = camPts(0, i) / camPts(2, i);
         float y = camPts(1, i) / camPts(2, i);
         if ( (x > 0 && x < COL - 0.5) && (y > 0 && y < ROW - 0.5) ){
-          if (viewProjection)
-            map.at<float>(round(y), round(x)) = 255;
+          if (viewProjection){
+            cv::circle(map, cv::Point(round(x),
+                       round(y)), 1, 
+                       cv::Scalar(camPts(2, i), 255, 255), -1);
+          }
 
           octomap::point3d endpoint(pt[0], pt[1], pt[2]);
           octomap::ColorOcTreeNode* n = tree.updateNode(endpoint, true);
           
-          // Till now, only set them to the same color.
-          n->setColor(0, 0, 255);
           if (defaultdata){
           	n->setColor(255*(k==0), 0, 255*(k==1));
+          }
+          else{
+            cv::Vec3b intensity = prediction.at<cv::Vec3b>(y,x);
+            n->setColor(intensity.val[2], intensity.val[1], intensity.val[0]);
           }
         }
   
       }
     }
     if (viewProjection){
-      double minVal, maxVal;
-      cv::Point minLoc, maxLoc;
-      cv::minMaxLoc(map, &minVal, &maxVal, &minLoc, &maxLoc);
-      // cout << minVal << " " << maxVal << endl;
-      map = 255 * (map - minVal) / (maxVal - minVal);
-      map.convertTo(map, CV_8UC1);
-      cv::imshow("result", map);
+      cv::cvtColor(map, map, cv::COLOR_HSV2BGR);
+      cv::imshow("projection", map);
       cv::waitKey(0);    
     }
   }
